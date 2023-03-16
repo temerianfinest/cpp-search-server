@@ -6,10 +6,13 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <numeric>
+#include <functional>
  
 using namespace std;
  
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double ACCEPTABLE_ERROR = 1e-6;
  
 string ReadLine() {
     string s;
@@ -85,7 +88,7 @@ public:
  
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
-                if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                if (abs(lhs.relevance - rhs.relevance) < ACCEPTABLE_ERROR) {
                     return lhs.rating > rhs.rating;
                 }
                 else {
@@ -98,8 +101,11 @@ public:
         return matched_documents;
     }
 
-    vector<Document> FindTopDocuments(const string& raw_query) const {            
-        return FindTopDocuments(raw_query, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; });
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status=DocumentStatus::ACTUAL) 
+     const {
+       DocumentStatus state = status;
+       const auto f = [state](int document_id, DocumentStatus status, int rating) { return  state == status; };
+       return FindTopDocuments(raw_query,  f);
     }
     
     int GetDocumentCount() const {
@@ -158,10 +164,7 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
+        int rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
  
