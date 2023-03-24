@@ -1,3 +1,13 @@
+ostream& operator<<(ostream& out, DocumentStatus status) {
+  switch (status) {
+      case DocumentStatus::ACTUAL: return out << "ACTUAL"s;
+      case DocumentStatus::IRRELEVANT: return out << "IRRELEVANT"s;
+      case DocumentStatus::BANNED: return out << "BANNED"s;
+      case DocumentStatus::REMOVED: return out << "REMOVED"s;
+  default: return out << (int) status;
+    }
+}
+
 // -------- Начало модульных тестов поисковой системы ----------
 
 // Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
@@ -63,27 +73,27 @@ void TestExcludeMinusWordsFromQuery() {
  
 void TestMatchDocument() {
  
-    const int doc_id = 1;    
+    const int doc_id = 42;    
     const string content = "cat in the city"s;
     const vector<int> ratings = {1, 2, 3};
  
     SearchServer server;        
     server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
  
-    // убедимся,что слова из поискового запроса вернулись
+    // убедимся, что слова из поискового запроса вернулись
     {
-        const auto found_tup = server.MatchDocument("in the cat"s, doc_id);
-        const vector<string> words = get<0>(found_tup);        
-        ASSERT_EQUAL(words.size(), 3);
+        const auto [matched_words, document_status] = server.MatchDocument("in the cat"s, doc_id);
+        ASSERT_EQUAL(matched_words.size(), 3);
+        vector<string> words_assert = {"cat"s, "in"s, "the"s};
+        ASSERT_EQUAL(words_assert, matched_words);
+        ASSERT_EQUAL(document_status, DocumentStatus::ACTUAL);
     }
  
     // убедимся, что присутствие минус-слова возвращает пустой вектор
     {
-        const auto found_tup = server.MatchDocument("in -the cat"s, doc_id);
-        const vector<string> words = get<0>(found_tup);        
-        ASSERT_EQUAL(words.empty(), true);
+        const auto [matched_words, document_status] = server.MatchDocument("in -the cat"s, doc_id);      
+        ASSERT(matched_words.empty());
     }
- 
 }
  
 // Тест на сортировку по релевантности найденых документов
@@ -105,7 +115,8 @@ void TestByRelevanceAndRating() {
     server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
  
     // убедимся, что документы найдены
-    const auto found_docs = server.FindTopDocuments("cat in the loan village"s);
+    const string query = "cat in the loan village"s;
+    const auto found_docs = server.FindTopDocuments(query);
     ASSERT_EQUAL(found_docs.size(), 3);
  
     const Document& doc1 = found_docs[0];
@@ -113,14 +124,19 @@ void TestByRelevanceAndRating() {
     const Document& doc3 = found_docs[2];
  
     // проверим сортировку по релевантности
+//...(log(кол-во документов / кол-во документов, с которыми поиск пересекается) * (кол-во совпадений слов документа и слов поиска / кол-во слов документа))...
+                              //↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
     ASSERT(abs(doc1.relevance - 0.304098831081123) < epx);
-    ASSERT(abs(doc2.relevance - 0.202732554054082) < epx);
-    ASSERT(abs(doc3.relevance - 0.0810930216216328) < epx);
+    ASSERT(abs(doc2.relevance - 0.202732554054082) < epx); 
+    ASSERT(abs(doc3.relevance - 0.0810930216216328) < epx); 
  
+
     // проверим рейтинг
-    ASSERT_EQUAL(doc1.rating, 1);
-    ASSERT_EQUAL(doc2.rating, 3);
-    ASSERT_EQUAL(doc3.rating, 2);
+    // (сумма рейтингов / их количество) 
+    //                         ↓↓↓↓↓↓↓↓↓↓↓↓↓
+    ASSERT_EQUAL(doc1.rating, (-1 + 2 + 2)/3);
+    ASSERT_EQUAL(doc2.rating, (2 + 3 + 4)/3);
+    ASSERT_EQUAL(doc3.rating, (1 + 2 + 3)/3);
  
 }
  
@@ -174,28 +190,39 @@ void TestSearchByStatusDocuments() {
  
     // вернем документы со статусом ACTUAL
     {
-        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::ACTUAL);        
+        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::ACTUAL); 
+        ASSERT_EQUAL(found_docs.size(), 1);
         ASSERT_EQUAL(found_docs[0].id, doc_id1);
     }
  
     // вернем документы со статусом IRRELEVANT
     {
-        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::IRRELEVANT);        
+        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::IRRELEVANT);  
+        ASSERT_EQUAL(found_docs.size(), 1);
         ASSERT_EQUAL(found_docs[0].id, doc_id2);
     }
  
     // вернем документы со статусом BANNED
     {
-        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::BANNED);        
+        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::BANNED);
+        ASSERT_EQUAL(found_docs.size(), 1);
         ASSERT_EQUAL(found_docs[0].id, doc_id3);
     }
  
     // вернем документы со статусом REMOVED
     {
-        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::REMOVED);        
+        const auto found_docs = server.FindTopDocuments("cat of village"s, DocumentStatus::REMOVED);
+        ASSERT_EQUAL(found_docs.size(), 1);
         ASSERT_EQUAL(found_docs[0].id, doc_id4);
     }
  
+    // проверим, что поиск документа по несоответсвующему статусу вернёт пустое значение
+    {
+        auto found_docs = server.FindTopDocuments("dog"s, DocumentStatus::IRRELEVANT); 
+        ASSERT_EQUAL(found_docs.size(), 1);
+        found_docs = server.FindTopDocuments("dog"s, DocumentStatus::ACTUAL);
+        ASSERT(found_docs.empty());
+    }    
 }
  
 // Функция TestSearchServer является точкой входа для запуска тестов
