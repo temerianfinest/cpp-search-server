@@ -94,20 +94,29 @@ void TestMatchDocument() {
         const auto [matched_words, document_status] = server.MatchDocument("in -the cat"s, doc_id);      
         ASSERT(matched_words.empty());
     }
+    
+    // убедимся, что стоп-слова исключаются из возвращаемого вектора
+    {
+        server.SetStopWords("in the"s);
+        const auto [matched_words, document_status] = server.MatchDocument("in the cat"s, doc_id);
+        ASSERT_EQUAL(matched_words.size(), 1);
+        vector<string> words_assert = {"cat"s};
+        ASSERT_EQUAL(words_assert, matched_words);
+    }
 }
  
 // Тест на сортировку по релевантности найденых документов
-void TestByRelevanceAndRating() {
-    const double epx = 1e-6; //+-0.000001
+void TestByRelevance() {
+    const double allowed_error = 1e-6; //+-0.000001
     const int doc_id1 = 1;
     const int doc_id2 = 2;
     const int doc_id3 = 3;
-    const string content_1 = "cat in the city"s;
-    const vector<int> ratings_1 = {-1, 2, 2}; // rating 1 relev = 0.304098831081123
-    const string content_2 = "dog of a hidden village"s;
-    const vector<int> ratings_2 = {1, 2, 3}; // rating 2 relev = 0.0810930216216328
-    const string content_3 = "silent assasin village cat in the village of darkest realms"s;
-    const vector<int> ratings_3 = {2, 3, 4}; // rating 3 relev = 0.202732554054082
+    const string content_1 = "белый кот и модный ошейник"s;
+    const vector<int> ratings_1 = {-1, 2, 2}; // rating 1 relev = 0.0440228
+    const string content_2 = "пушистый кот пушистый хвост"s;
+    const vector<int> ratings_2 = {1, 2, 3}; // rating 2 relev = 0.0352182
+    const string content_3 = "ухоженный кот выразительные глаза"s;
+    const vector<int> ratings_3 = {2, 3, 4}; // rating 3 relev = 0.0528273
  
     SearchServer server;        
     server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
@@ -115,7 +124,7 @@ void TestByRelevanceAndRating() {
     server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
  
     // убедимся, что документы найдены
-    const string query = "cat in the loan village"s;
+    const string query = "кот"s;
     const auto found_docs = server.FindTopDocuments(query);
     ASSERT_EQUAL(found_docs.size(), 3);
  
@@ -123,21 +132,45 @@ void TestByRelevanceAndRating() {
     const Document& doc2 = found_docs[1];
     const Document& doc3 = found_docs[2];
  
-    // проверим сортировку по релевантности
+// проверим сортировку по релевантности
 //...(log(кол-во документов / кол-во документов, с которыми поиск пересекается) * (кол-во совпадений слов документа и слов поиска / кол-во слов документа))...
-                              //↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-    ASSERT(abs(doc1.relevance - 0.304098831081123) < epx);
-    ASSERT(abs(doc2.relevance - 0.202732554054082) < epx); 
-    ASSERT(abs(doc3.relevance - 0.0810930216216328) < epx); 
- 
+//                              ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    ASSERT(abs(doc1.relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 3)) < allowed_error); 
+    ASSERT(abs(doc2.relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4)) < allowed_error); 
+    ASSERT(abs(doc3.relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4)) < allowed_error);  
+}
 
-    // проверим рейтинг
+void TestByRating() {
+    const int doc_id1 = 1;
+    const int doc_id2 = 2;
+    const int doc_id3 = 3;
+    const string content_1 = "белый кот модный ошейник"s;
+    const vector<int> ratings_1 = {-1, 2, 2}; // rating 1 relev = 0.0440228
+    const string content_2 = "пушистый кот пушистый хвост"s;
+    const vector<int> ratings_2 = {1, 2, 3}; // rating 2 relev = 0.0352182
+    const string content_3 = "ухоженный кот выразительные глаза"s;
+    const vector<int> ratings_3 = {2, 3, 4}; // rating 3 relev = 0.0528273
+ 
+    SearchServer server;        
+    server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
+    server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
+    server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
+ 
+    // убедимся, что документы найдены
+    const string query = "кот"s;
+    const auto found_docs = server.FindTopDocuments(query);
+    ASSERT_EQUAL(found_docs.size(), 3);
+ 
+    const Document& doc1 = found_docs[0];
+    const Document& doc2 = found_docs[1];
+    const Document& doc3 = found_docs[2];
+    
+        // проверим рейтинг
     // (сумма рейтингов / их количество) 
     //                         ↓↓↓↓↓↓↓↓↓↓↓↓↓
-    ASSERT_EQUAL(doc1.rating, (-1 + 2 + 2)/3);
-    ASSERT_EQUAL(doc2.rating, (2 + 3 + 4)/3);
-    ASSERT_EQUAL(doc3.rating, (1 + 2 + 3)/3);
- 
+    ASSERT_EQUAL(doc1.rating, (2 + 3 + 4) / 3);
+    ASSERT_EQUAL(doc2.rating, (1 + 2 + 3) / 3);
+    ASSERT_EQUAL(doc3.rating, (-1 + 2 + 2) / 3);
 }
  
 // Тест на фильтрацию результата с использованием предиката
@@ -230,7 +263,8 @@ void TestSearchServer() {
     RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);    
     RUN_TEST(TestExcludeMinusWordsFromQuery);
     RUN_TEST(TestMatchDocument);
-    RUN_TEST(TestByRelevanceAndRating);
+    RUN_TEST(TestByRelevance);
+    RUN_TEST(TestByRating);
     RUN_TEST(TestFilterByPredicate);
     RUN_TEST(TestSearchByStatusDocuments);
 }
