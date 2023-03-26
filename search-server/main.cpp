@@ -102,21 +102,22 @@ void TestMatchDocument() {
         ASSERT_EQUAL(matched_words.size(), 1);
         vector<string> words_assert = {"cat"s};
         ASSERT_EQUAL(words_assert, matched_words);
+        ASSERT_EQUAL(document_status, DocumentStatus::ACTUAL);
     }
 }
  
 // Тест на сортировку по релевантности найденых документов
-void TestByRelevance() {
+void TestSortByRelevance() {
     const double allowed_error = 1e-6; //+-0.000001
     const int doc_id1 = 1;
     const int doc_id2 = 2;
     const int doc_id3 = 3;
     const string content_1 = "белый кот и модный ошейник"s;
-    const vector<int> ratings_1 = {-1, 2, 2}; // rating 1 relev = 0.0440228
+    const vector<int> ratings_1 = {1, 1, 1}; //
     const string content_2 = "пушистый кот пушистый хвост"s;
-    const vector<int> ratings_2 = {1, 2, 3}; // rating 2 relev = 0.0352182
-    const string content_3 = "ухоженный кот выразительные глаза"s;
-    const vector<int> ratings_3 = {2, 3, 4}; // rating 3 relev = 0.0528273
+    const vector<int> ratings_2 = {1, 1, 1}; //
+    const string content_3 = "ухоженный кот"s;
+    const vector<int> ratings_3 = {1, 1, 1}; //
  
     SearchServer server;        
     server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
@@ -128,28 +129,32 @@ void TestByRelevance() {
     const auto found_docs = server.FindTopDocuments(query);
     ASSERT_EQUAL(found_docs.size(), 3);
  
-    const Document& doc1 = found_docs[0];
-    const Document& doc2 = found_docs[1];
-    const Document& doc3 = found_docs[2];
- 
-// проверим сортировку по релевантности
+// проверим правильность вычисленных релевантностей
+    {
 //...(log(кол-во документов / кол-во документов, с которыми поиск пересекается) * (кол-во совпадений слов документа и слов поиска / кол-во слов документа))...
-//                              ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-    ASSERT(abs(doc1.relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 3)) < allowed_error); 
-    ASSERT(abs(doc2.relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4)) < allowed_error); 
-    ASSERT(abs(doc3.relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4)) < allowed_error);  
+//                                       ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    ASSERT(abs(found_docs[0].relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 2)) < allowed_error); 
+    ASSERT(abs(found_docs[1].relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4)) < allowed_error); 
+    ASSERT(abs(found_docs[2].relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 5)) < allowed_error);  
+    }
+        
+        // проверим сортировку по релевантности
+        {
+        ASSERT(found_docs[0].relevance >= found_docs[1].relevance);
+        ASSERT(found_docs[1].relevance >= found_docs[2].relevance);
+    }
 }
 
-void TestByRating() {
+void TestSortByRating() {
     const int doc_id1 = 1;
     const int doc_id2 = 2;
     const int doc_id3 = 3;
     const string content_1 = "белый кот модный ошейник"s;
-    const vector<int> ratings_1 = {-1, 2, 2}; // rating 1 relev = 0.0440228
-    const string content_2 = "пушистый кот пушистый хвост"s;
-    const vector<int> ratings_2 = {1, 2, 3}; // rating 2 relev = 0.0352182
-    const string content_3 = "ухоженный кот выразительные глаза"s;
-    const vector<int> ratings_3 = {2, 3, 4}; // rating 3 relev = 0.0528273
+    const vector<int> ratings_1 = {-1, 2, 2}; 
+    const string content_2 = "белый кот модный ошейник"s;
+    const vector<int> ratings_2 = {1, 2, 3}; 
+    const string content_3 = "белый кот модный ошейник"s;
+    const vector<int> ratings_3 = {2, 3, 4}; 
  
     SearchServer server;        
     server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
@@ -263,8 +268,8 @@ void TestSearchServer() {
     RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);    
     RUN_TEST(TestExcludeMinusWordsFromQuery);
     RUN_TEST(TestMatchDocument);
-    RUN_TEST(TestByRelevance);
-    RUN_TEST(TestByRating);
+    RUN_TEST(TestSortByRelevance);
+    RUN_TEST(TestSortByRating);
     RUN_TEST(TestFilterByPredicate);
     RUN_TEST(TestSearchByStatusDocuments);
 }
