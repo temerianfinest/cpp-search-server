@@ -106,8 +106,8 @@ void TestMatchDocument() {
     }
 }
  
-// Тест на сортировку по релевантности найденых документов
-void TestSortByRelevance() {
+// Тест на вычисление релеватности найденных документов
+void TestRelevanceCalculation() {
     const double allowed_error = 1e-6; //+-0.000001
     const int doc_id1 = 1;
     const int doc_id2 = 2;
@@ -137,15 +137,38 @@ void TestSortByRelevance() {
     ASSERT(abs(found_docs[1].relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4)) < allowed_error); 
     ASSERT(abs(found_docs[2].relevance - log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 5)) < allowed_error);  
     }
-        
-        // проверим сортировку по релевантности
-        {
-        ASSERT(found_docs[0].relevance >= found_docs[1].relevance);
-        ASSERT(found_docs[1].relevance >= found_docs[2].relevance);
+}
+
+// тест на сортировку по релевантности 
+void TestSortByRelevance() {
+    const int doc_id1 = 1;
+    const int doc_id2 = 2;
+    const int doc_id3 = 3;
+    const string content_1 = "белый кот и модный ошейник"s;
+    const vector<int> ratings_1 = {1, 1, 1}; //
+    const string content_2 = "пушистый кот пушистый хвост"s;
+    const vector<int> ratings_2 = {1, 1, 1}; //
+    const string content_3 = "ухоженный кот"s;
+    const vector<int> ratings_3 = {1, 1, 1}; //
+ 
+    SearchServer server;        
+    server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
+    server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
+    server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
+ 
+    // убедимся, что документы найдены
+    {
+    const string query = "кот"s;
+    const auto found_docs = server.FindTopDocuments(query);
+    ASSERT_EQUAL(found_docs.size(), 3);
+    
+    // проверим сортировку по релевантности
+    ASSERT(found_docs[0].relevance >= found_docs[1].relevance);
+    ASSERT(found_docs[1].relevance >= found_docs[2].relevance);
     }
 }
 
-void TestSortByRating() {
+void TestRatingCalculation() {
     const int doc_id1 = 1;
     const int doc_id2 = 2;
     const int doc_id3 = 3;
@@ -165,18 +188,42 @@ void TestSortByRating() {
     const string query = "кот"s;
     const auto found_docs = server.FindTopDocuments(query);
     ASSERT_EQUAL(found_docs.size(), 3);
- 
-    const Document& doc1 = found_docs[0];
-    const Document& doc2 = found_docs[1];
-    const Document& doc3 = found_docs[2];
     
-        // проверим рейтинг
+    // проверим правильность вычисленных рейтингов
     // (сумма рейтингов / их количество) 
     //                         ↓↓↓↓↓↓↓↓↓↓↓↓↓
-    ASSERT_EQUAL(doc1.rating, (2 + 3 + 4) / 3);
-    ASSERT_EQUAL(doc2.rating, (1 + 2 + 3) / 3);
-    ASSERT_EQUAL(doc3.rating, (-1 + 2 + 2) / 3);
+    ASSERT_EQUAL(found_docs[0].rating, (2 + 3 + 4) / 3);
+    ASSERT_EQUAL(found_docs[1].rating, (1 + 2 + 3) / 3);
+    ASSERT_EQUAL(found_docs[2].rating, (-1 + 2 + 2) / 3);
 }
+    
+    void TestSortByRating() {
+    const int doc_id1 = 1;
+    const int doc_id2 = 2;
+    const int doc_id3 = 3;
+    const string content_1 = "белый кот модный ошейник"s;
+    const vector<int> ratings_1 = {-1, 2, 2}; 
+    const string content_2 = "белый кот модный ошейник"s;
+    const vector<int> ratings_2 = {1, 2, 3}; 
+    const string content_3 = "белый кот модный ошейник"s;
+    const vector<int> ratings_3 = {2, 3, 4}; 
+ 
+    SearchServer server;        
+    server.AddDocument(doc_id1, content_1, DocumentStatus::ACTUAL, ratings_1);
+    server.AddDocument(doc_id2, content_2, DocumentStatus::ACTUAL, ratings_2);
+    server.AddDocument(doc_id3, content_3, DocumentStatus::ACTUAL, ratings_3);
+ 
+    // убедимся, что документы найдены
+    const string query = "кот"s;
+    const auto found_docs = server.FindTopDocuments(query);
+    ASSERT_EQUAL(found_docs.size(), 3);
+        
+    // проверим сортировку по рейтингу
+        {
+        ASSERT(found_docs[0].relevance >= found_docs[1].relevance);
+        ASSERT(found_docs[1].relevance >= found_docs[2].relevance);
+        }
+    }
  
 // Тест на фильтрацию результата с использованием предиката
 void TestFilterByPredicate() {
@@ -268,7 +315,9 @@ void TestSearchServer() {
     RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);    
     RUN_TEST(TestExcludeMinusWordsFromQuery);
     RUN_TEST(TestMatchDocument);
+    RUN_TEST(TestRelevanceCalculation);
     RUN_TEST(TestSortByRelevance);
+    RUN_TEST(TestRatingCalculation);
     RUN_TEST(TestSortByRating);
     RUN_TEST(TestFilterByPredicate);
     RUN_TEST(TestSearchByStatusDocuments);
