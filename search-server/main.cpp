@@ -6,10 +6,13 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <numeric>
  
 using namespace std;
  
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+
+const double EPSILON = 1e-6;
  
 string ReadLine() {
     string s;
@@ -116,8 +119,8 @@ explicit SearchServer(const string& stop_words_text)
     for (const string& word : *words) {
         word_to_document_freqs_[word][document_id] += inv_word_count;
     }
-
-    documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
+     documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
+     document_ids_.push_back(document_id);
 }
 
  
@@ -135,7 +138,7 @@ vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate doc
     
     auto result = FindAllDocuments(*query, document_predicate);
     sort(result.begin(), result.end(), [](const Document& lhs, const Document& rhs) {
-        if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+        if (abs(lhs.relevance - rhs.relevance) < EPSILON) {
             return lhs.rating > rhs.rating;
         } else {
             return lhs.relevance > rhs.relevance;
@@ -232,19 +235,12 @@ tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int
 }
 
  
-    int GetDocumentId(int index) const {
-        int i = 0;
-        for (const auto& [id, doc_data] : documents_) {
-            if (i == index) {
-                return id;
-            } else {
-                ++i;
-            }
-        }
-        throw out_of_range("Index out of range");
-    }
+int GetDocumentId(int index) const {
+    return document_ids_.at(index);
+}
  
 private:
+    vector<int> document_ids_;
     struct DocumentData {
         int rating;
         DocumentStatus status;
@@ -271,10 +267,7 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
+        int rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
  
