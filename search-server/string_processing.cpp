@@ -1,9 +1,12 @@
 #include "string_processing.h"
-vector<string> SplitIntoWords(const string& text) {
-    vector<string> words;
-    string word;
+#include <cctype>
+
+std::vector<std::string> SplitIntoWords(const std::string& text) {
+    std::vector<std::string> words;
+    std::string word;
+
     for (const char c : text) {
-        if (c == ' ') {
+        if (std::isspace(c)) {
             if (!word.empty()) {
                 words.push_back(word);
                 word.clear();
@@ -12,6 +15,7 @@ vector<string> SplitIntoWords(const string& text) {
             word += c;
         }
     }
+
     if (!word.empty()) {
         words.push_back(word);
     }

@@ -1,21 +1,8 @@
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-#include <map>
-#include <set>
-#include <stdexcept>
-#include <string>
-#include <utility>
-#include <vector>
-#include <deque>
-
-
-#include "document.h"
-#include "paginator.h"
-#include "read_input_functions.h"
-#include "request_queue.h"
-#include "search_server.h"
-#include "string_processing.h"
+#include <iostream> 
+#include "document.h" 
+#include "paginator.h" 
+#include "request_queue.h" 
+#include "search_server.h" 
 
 using namespace std;
 

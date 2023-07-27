@@ -31,7 +31,7 @@
     int RequestQueue::GetNoResultRequests() const {
         int count = 0;
         for (auto memb: requests_) {
-            if (memb.sucsess == 0) {
+            if (memb.success == 0) {
                 count ++;
             }
         }
