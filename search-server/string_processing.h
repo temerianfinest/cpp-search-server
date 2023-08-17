@@ -1,7 +1,12 @@
 #pragma once
+
+#include "document.h"
+#include <iostream>
 #include <string>
 #include <vector>
 #include <set>
+
+using namespace std::literals;
 
 std::vector<std::string> SplitIntoWords(const std::string& text);
 

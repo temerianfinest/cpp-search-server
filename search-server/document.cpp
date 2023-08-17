@@ -1,11 +1,17 @@
 #include "document.h"
+#include <iostream>
+#include <string>
 
+void PrintDocument(const Document& document) {
+    std::cout << "{ "
+         << "document_id = " << document.id << ", "
+         << "relevance = " << document.relevance << ", "
+         << "rating = " << document.rating << " }" << std::endl;
+}
 
-ostream& operator<<(ostream& output, Document document) {
-    output << "{ "s
-         << "document_id = "s << document.id << ", "s
-         << "relevance = "s << document.relevance << ", "s
-         << "rating = "s << document.rating
-         << " }"s;
-    return output;
+std::ostream& operator<<(std::ostream& os, const Document& document) {
+        os << "{ " << "document_id" << " = " << document.id <<
+        ", relevance = " << document.relevance <<
+        ", rating = " << document.rating << " }";
+        return os;
 }

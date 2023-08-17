@@ -1,46 +1,33 @@
 #include "request_queue.h"
-    
-    vector<Document> RequestQueue::AddFindRequest(const string& raw_query, DocumentStatus status) {
-       auto result = temp_server_.FindTopDocuments(raw_query, status);
-       if (result.size() > 0){
-        requests_.push_back({raw_query, 1});
-       }
-       else {
-        requests_.push_back({raw_query,0});
-       }
-       if (requests_.size() > min_in_day_) {
-        CutDeque();
-    }
-    return result;
-    }
+#include <string>
+#include <vector>
+#include <deque>
+#include <algorithm>
+#include "document.h"
+#include "search_server.h"
 
-    vector<Document> RequestQueue::AddFindRequest(const string& raw_query) {
-       auto result = temp_server_.FindTopDocuments(raw_query);
-       if (result.size() > 0){
-        requests_.push_back({raw_query, 1});
-       }
-       else {
-        requests_.push_back({raw_query, 0});
-       }
-       if (requests_.size() > min_in_day_) {
-        CutDeque();
+    RequestQueue::RequestQueue(const SearchServer& server) : search_server(server) {
     }
-    return result;
+    // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
+    std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentStatus status) {
+        return ManageRequest(search_server.FindTopDocuments(raw_query, status));
     }
-
+    std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query) {
+        return ManageRequest(search_server.FindTopDocuments(raw_query));
+    }
     int RequestQueue::GetNoResultRequests() const {
-        int count = 0;
-        for (auto memb: requests_) {
-            if (memb.success == 0) {
-                count ++;
-            }
-        }
-        return count;
+        return std::count_if(requests_.begin(), requests_.end(), [](QueryResult res) {return !res.request_type;});
     }
 
-    void RequestQueue::CutDeque () {
-        while(requests_.size() != min_in_day_) {
+    std::vector<Document> RequestQueue::ManageRequest(const std::vector<Document>& documents) {
+        if (requests_.size() >= min_in_day_) {
             requests_.pop_front();
         }
+        if (!documents.empty()) {
+            requests_.push_back({true});
+        } else {
+            
+            requests_.push_back({false});
+        }
+        return documents;
     }
-
