@@ -34,30 +34,13 @@ SearchServer::SearchServer(const std::string& stop_words_text)
         documents_id_.insert(document_id);
     }
 
-    std::set<int> SearchServer::FindDuplicates(int document_id) const {
-        std::set<int> duplicates;
-        auto iter = words_to_documents_.begin();
-
-        auto& document_words = words_to_documents_.at(document_id);
-
-        while (iter != words_to_documents_.end()) {
-            ++iter;
-            iter = find_if(iter, words_to_documents_.end(), [document_words, document_id](auto document){return document_words == document.second && document_id < document.first;});
-            if (iter != words_to_documents_.end()) {
-                const auto& document_id = *iter;
-                duplicates.insert(document_id.first);
-            }
-        }
-        return duplicates;
-    }
-
-    /*std::set<std::string>> SearchServer::GetDocumentWordsById(int document_id) const {
+    std::set<std::string> SearchServer::GetDocumentWordsById(int document_id) const {
         if (words_to_documents_.count(document_id)) {
             return words_to_documents_.at(document_id);
         } else {
             return {};
         }
-    }*/
+    }
 
     std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
         return FindTopDocuments(
@@ -66,9 +49,9 @@ SearchServer::SearchServer(const std::string& stop_words_text)
             });
     }
     
-    /*int SearchServer::GetDocumentId(int index) {
-        return documents_q_.at(index);
-    }*/
+    int SearchServer::GetDocumentId(int index) {
+        return index;
+    }
     
     std::set<int>::const_iterator  SearchServer::begin() {
         return documents_id_.begin();
@@ -78,17 +61,20 @@ SearchServer::SearchServer(const std::string& stop_words_text)
         return documents_id_.end();
     }
 
-    void SearchServer::RemoveDocument(int document_id) {
-        for (auto& word : words_to_documents_[document_id]) {
-            word_to_document_freqs_[word].erase(document_id);
-        }
-            
-        words_to_documents_.erase(find_if(words_to_documents_.begin(), words_to_documents_.end(), [document_id](auto document) {return document.first == document_id;}));
-        
-        documents_.erase(find_if(documents_.begin(), documents_.end(), [document_id](auto document) {return document.first == document_id;}));
-        
-        documents_id_.erase(find_if(documents_id_.begin(), documents_id_.end(), [document_id](auto document) {return document == document_id;}));
+void SearchServer::RemoveDocument(int document_id) {
+    // Удаляем соответствующие слова из индекса
+    for (auto& word : words_to_documents_[document_id]) {
+        word_to_document_freqs_[word].erase(document_id);
     }
+
+    // Удаляем информацию о документе из words_to_documents_ и documents_id_
+    words_to_documents_.erase(document_id);
+    documents_id_.erase(document_id);
+
+    // Удаляем информацию о документе из documents_
+    documents_.erase(document_id);
+}
+
     
     int SearchServer::GetDocumentCount() const {
         return documents_.size();
