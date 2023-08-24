@@ -62,15 +62,16 @@ private:
     
     static bool IsValidWord(const std::string& word, bool isMinus = false);
     
-    template <typename Container>
-    static bool IsValidText(const Container& text, bool is_minus = false) {
-        for (const auto& word : text) {
-            if (!IsValidWord(word, is_minus) || word == "") {
-                return false;
-            }
+   template <typename Container>
+static bool IsValidText(const Container& text, bool is_minus = false) {
+    for (const auto& word : text) {
+        if (!IsValidWord(word, is_minus) || word.empty()) {
+            return false;
         }
-        return true;
     }
+    return true;
+}
+
     
     std::vector<std::string> SplitIntoWordsNoStop(const std::string& text) const;
 
@@ -98,6 +99,7 @@ private:
     std::vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
 };
 
+// Вне класса SearchServer:
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
     bool is_minus = true;
