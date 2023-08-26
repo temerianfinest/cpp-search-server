@@ -63,12 +63,7 @@ private:
  
     bool IsStopWord(const std::string& word) const;
  
-    static bool IsValidWord(const std::string& word) {  
-        // A valid word must not contain special characters  
-        return none_of(word.begin(), word.end(), [](char c) {  
-            return c >= '\0' && c < ' ';  
-        });  
-    }
+    static bool IsValidWord(const std::string& word);
     
    template <typename Container>
 static bool IsValidText(const Container& text) {

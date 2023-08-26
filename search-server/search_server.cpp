@@ -100,6 +100,12 @@ bool SearchServer::IsStopWord(const std::string& word) const {
     return stop_words_.count(word) > 0;  
 }  
  
+bool SearchServer::IsValidWord(const std::string& word) {   
+        return none_of(word.begin(), word.end(), [](char c) {  
+            return c >= '\0' && c < ' ';  
+        });  
+    }
+
 std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& text) const {  
     std::vector<std::string> words;  
     for (const std::string& word : SplitIntoWords(text)) {  
