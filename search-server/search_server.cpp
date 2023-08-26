@@ -78,11 +78,6 @@ int SearchServer::GetDocumentCount() const {
 std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query, int document_id) const {
     const Query query = ParseQuery(raw_query);
  
- 
-    if (!IsValidText(query.plus_words) || !IsValidText(query.minus_words)) {
-        throw std::invalid_argument("Некорректное содержание в списке слов запроса"s);
-    }
- 
     std::vector<std::string> matched_words;
     for (const std::string& word : query.plus_words) {
         if (word_to_document_freqs_.count(word) > 0 && word_to_document_freqs_.at(word).count(document_id)) {
@@ -106,14 +101,11 @@ bool SearchServer::IsStopWord(const std::string& word) const {
 }  
  
 bool SearchServer::IsValidWord(const std::string& word) {  
-    if (word[0] == '-') {  
-        return false;  
-    }  
- 
-    return std::none_of(word.begin(), word.end(), [](char c) {  
-        return c >= '\0' && c < ' ';  
-    });  
-} 
+        // A valid word must not contain special characters  
+        return none_of(word.begin(), word.end(), [](char c) {  
+            return c >= '\0' && c < ' ';  
+        });  
+    }
  
  
 std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& text) const {  
@@ -141,14 +133,21 @@ int SearchServer::ComputeAverageRating(const std::vector<int>& ratings) {
 }  
  
 SearchServer::QueryWord SearchServer::ParseQueryWord(std::string text) const {  
-    bool is_minus = false;  
-    // Word shouldn't be empty  
-    if (text[0] == '-') {  
-        is_minus = true;  
-        text = text.substr(1);  
-    }  
-    return {text, is_minus, IsStopWord(text)};  
-}  
+        if (text.empty()) {  
+            throw std::invalid_argument("Поисковой запрос пуст"s);  
+        }  
+        std::string word = text;  
+        bool is_minus = false;  
+        if (word[0] == '-') {  
+            is_minus = true;  
+            word = word.substr(1);  
+        }  
+        if (word.empty() || word[0] == '-' || !IsValidWord(word)) {  
+            throw std::invalid_argument("Некорректное содержание в списке слов документа");  
+        }  
+  
+        return {word, is_minus, IsStopWord(word)};  
+}
  
 SearchServer::Query SearchServer::ParseQuery(const std::string& text) const {  
     SearchServer::Query query;  
