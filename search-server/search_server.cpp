@@ -21,7 +21,7 @@ SearchServer::SearchServer(const std::string& stop_words_text)
 void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings) {  
     LogDuration("AddDocument");  
     const std::vector<std::string> words = SplitIntoWordsNoStop(document);  
-    if (document_id < 0 || documents_.count(document_id) != 0) {  
+    if (documents_.count(document_id) != 0 || document_id < 0) {  
         throw std::invalid_argument("Некорректный id документа"s);  
     }  
     const double inv_word_count = 1.0 / words.size();  
@@ -48,16 +48,6 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
             return document_status == status;  
         });  
 }  
- 
-int SearchServer::GetDocumentId(int index) {
-    if (index >= 0 && index < documents_id_.size()) {
-        auto it = documents_id_.begin();
-        std::advance(it, index);
-        return *it;
-    } else {
-        throw std::out_of_range("Некорректный индекс документа");
-    }
-} 
  
 std::set<int>::const_iterator  SearchServer::begin() {  
     return documents_id_.begin();  
