@@ -17,12 +17,15 @@ const int MAX_RESULT_DOCUMENT_COUNT = 5;
 class SearchServer {
 public:
     template <typename StringContainer>
-    explicit SearchServer(const StringContainer& stop_words)
-        : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
-        if (!IsValidText(stop_words_)) {
-            throw std::invalid_argument("Некорректное содержание в списке 'стоп-слов'"s);
+explicit SearchServer(const StringContainer& stop_words)
+    : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
+        for (const auto& stop_word : stop_words) {
+            if (!IsValidWord(stop_word)) {
+                throw std::invalid_argument("Некорректное содержание в списке 'стоп-слов'"s);
+            }
         }
     }
+
  
     explicit SearchServer(const std::string& stop_words_text);
  
@@ -60,8 +63,13 @@ private:
  
     bool IsStopWord(const std::string& word) const;
  
-    static bool IsValidWord(const std::string& word);
- 
+    static bool IsValidWord(const std::string& word) {  
+        // A valid word must not contain special characters  
+        return none_of(word.begin(), word.end(), [](char c) {  
+            return c >= '\0' && c < ' ';  
+        });  
+    }
+    
    template <typename Container>
 static bool IsValidText(const Container& text) {
     for (const auto& word : text) {
